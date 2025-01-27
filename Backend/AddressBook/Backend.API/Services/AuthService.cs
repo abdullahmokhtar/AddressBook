@@ -33,9 +33,9 @@ namespace Backend.API.Services
                 Address = "",
                 DepartmentId = 1,
                 JobTitleId = 1,
-                FullName = "",
-                DOB = new DateOnly(2025, 10, 1),
-                MobileNumber = "",
+                FullName = model.Name,
+                DOB = new DateOnly(2000, 3, 1),
+                MobileNumber = model.Phone,
                 Photo = "",
 
                 Email = model.Email,

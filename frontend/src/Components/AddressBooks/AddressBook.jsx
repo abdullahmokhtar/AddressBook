@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   getAddressBooks,
   updateAddressBook,
@@ -8,46 +8,54 @@ import { Link } from "react-router-dom";
 import DeleteButton from "../Layout/DeleteButton ";
 import EditForm from "./EditForm";
 import { utils, writeFile } from "xlsx";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 const AddressBook = () => {
   const [addressBooks, setAddressBooks] = useState([]);
-  const [search, setSearch] = useState("");
-  const [searchDate, setSearchDate] = useState("");
+  const [filters, setFilters] = useState({ search: "", searchDate: null });
 
-  useEffect(() => {
-    fetchAddressBooks();
-  }, []);
-
-  const fetchAddressBooks = async (search, searchDate) => {
+  const fetchAddressBooks = useCallback(async () => {
     try {
+      const { search, searchDate } = filters;
       const response = await getAddressBooks(search, searchDate);
       setAddressBooks(response);
     } catch (error) {
-      console.error("Error fetching AddressBooks:", error);
+      console.error("Error fetching AddressBooks:", error.message || error);
     }
+  }, [filters]);
+
+  useEffect(() => {
+    fetchAddressBooks();
+  }, [fetchAddressBooks]);
+
+  // Debounce handler for search input
+  const handleSearch = (e) => {
+    const value = e.target.value;
+    setFilters((prev) => ({ ...prev, search: value }));
   };
 
-  const handelSearch = (e) => {
-    setSearch(e.target.value);
-    if (e.target.value !== undefined) {
-      fetchAddressBooks(search);
-    }
+  const handleSearchDate = (date) => {
+     if (date) {
+       const formattedDate = date.toISOString().split("T")[0]; // YYYY-MM-DD format
+       setFilters((prevFilters) => ({
+         ...prevFilters,
+         searchDate: formattedDate, // Store just the date
+       }));
+     } else {
+       setFilters((prevFilters) => ({
+         ...prevFilters,
+         searchDate: null,
+       }));
+     }
   };
 
-  const handelSearchDate = (e) => {
-    setSearchDate(e.target.value);
-    if (e.target.value !== undefined) {
-      fetchAddressBooks(null, searchDate);
-    }
-  };
-
+  // Export data to Excel
   const exportHandler = () => {
-    var wb = utils.book_new();
-    var ws = utils.json_to_sheet(addressBooks);
-
-    utils.book_append_sheet(wb, ws, "AddressBooks");
-
-    writeFile(wb, "AddressBooks.xlsx");
+    const workbook = utils.book_new();
+    const worksheet = utils.json_to_sheet(addressBooks);
+    utils.book_append_sheet(workbook, worksheet, "AddressBooks");
+    writeFile(workbook, "AddressBooks.xlsx");
   };
 
   return (
@@ -60,31 +68,36 @@ const AddressBook = () => {
               type="text"
               placeholder="Search"
               className="form-control"
-              onChange={handelSearch}
+              value={filters.search}
+              onChange={handleSearch}
             />
           </div>
           <div className="col-md-6">
-            <input
-              type="date"
+            <DatePicker
+              selected={filters.searchDate}
+              onChange={handleSearchDate}
+              dateFormat="MM/dd/yyyy"
               className="form-control"
-              onChange={handelSearchDate}
+              placeholderText="Select a date"
             />
           </div>
         </div>
 
         <div className="col-md-4 text-end">
-          <Link to="/create-Address-book" className="btn btn-primary me-3">
+          <Link to="/create-address-book" className="btn btn-primary me-3">
             Add New Entry
           </Link>
           <button className="btn btn-secondary" onClick={exportHandler}>
-            Export to excel
+            Export to Excel
           </button>
         </div>
       </div>
+
       <div className="table-responsive">
-        <table className="table table-primary table-striped table-hover table-responsive">
+        <table className="table table-striped table-hover">
           <thead>
             <tr>
+              <th>Photo</th>
               <th>Full Name</th>
               <th>Email</th>
               <th>Mobile Number</th>
@@ -97,31 +110,49 @@ const AddressBook = () => {
             </tr>
           </thead>
           <tbody>
-            {addressBooks.map((addressBook) => (
-              <tr key={addressBook.id}>
-                <td>{addressBook.fullName}</td>
-                <td className="text-truncate">{addressBook.email}</td>
-                <td>{addressBook.mobileNumber}</td>
-                <td>{addressBook.address}</td>
-                <td>{addressBook.jobTitle}</td>
-                <td>{addressBook.department}</td>
-                <td>{addressBook.dob}</td>
-                <td>{addressBook.age}</td>
-                <td>
-                  <EditForm
-                    onEdit={updateAddressBook}
-                    id={addressBook.id}
-                    data={addressBook}
-                    onSuccess={fetchAddressBooks}
-                  />
-                  <DeleteButton
-                    onDelete={deleteAddressBook}
-                    id={addressBook.id}
-                    onSuccess={fetchAddressBooks}
-                  />
+            {addressBooks.length > 0 ? (
+              addressBooks.map((book) => (
+                <tr key={book.id}>
+                  <td>
+                    <img
+                      src={`https://localhost:7260/images/${book.photo}`}
+                      alt={book.fullName}
+                      className="img-fluid rounded-circle"
+                      style={{ width: "50px", height: "50px" }}
+                    />
+                  </td>
+                  <td>{book.fullName}</td>
+                  <td>{book.email}</td>
+                  <td>{book.mobileNumber}</td>
+                  <td>{book.address}</td>
+                  <td>{book.jobTitle}</td>
+                  <td>{book.department}</td>
+                  <td>{book.dob}</td>
+                  <td>{book.age}</td>
+                  <td>
+                    <div className="d-flex">
+                      <EditForm
+                        onEdit={updateAddressBook}
+                        id={book.id}
+                        data={book}
+                        onSuccess={fetchAddressBooks}
+                      />
+                      <DeleteButton
+                        onDelete={deleteAddressBook}
+                        id={book.id}
+                        onSuccess={fetchAddressBooks}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="10" className="text-center">
+                  No Address Books Found
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>

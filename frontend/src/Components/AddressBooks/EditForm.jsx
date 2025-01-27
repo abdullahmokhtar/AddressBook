@@ -6,6 +6,8 @@ import {
   getJobTitles,
   updateAddressBook,
 } from "../../util/http";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 const EditForm = ({ onEdit, id, onSuccess, data }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -13,79 +15,29 @@ const EditForm = ({ onEdit, id, onSuccess, data }) => {
   const [jobTitleOptions, setJobTitleOptions] = useState([]);
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-  });
 
   useEffect(() => {
-    fetchJobTitleOptions();
-    fetchDepartmentOptions();
+    // Fetch options on component mount
+    fetchOptions();
   }, []);
 
-  const fetchJobTitleOptions = async () => {
+  const fetchOptions = async () => {
     try {
-      const response = await getJobTitles();
-      setJobTitleOptions(response);
+      const [jobTitles, departments] = await Promise.all([
+        getJobTitles(),
+        getDepartments(),
+      ]);
+      setJobTitleOptions(jobTitles);
+      setDepartmentOptions(departments);
     } catch (error) {
-      console.error("Error fetching job titles:", error);
+      console.error("Error fetching options:", error);
     }
-  };
-
-  const fetchDepartmentOptions = async () => {
-    try {
-      const response = await getDepartments();
-      setDepartmentOptions(response);
-    } catch (error) {
-      console.error("Error fetching departments:", error);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log("Form submitted:", formData);
-    await onEdit(id, { ...formData, id });
-    setIsOpen(false);
-    await onSuccess();
-  };
-
-  const submit = async () => {
-    setIsLoading(true);
-    setErrorMessage("");
-
-    const response = await updateAddressBook(id, {
-      ...formik.values,
-      id,
-    }).catch((err) => {
-      console.log(response);
-      console.log(err);
-      if (err.response.status === 401)
-        setErrorMessage("You must login before adding product to wishlist");
-      else setErrorMessage("Something went wrong");
-    });
-    if (response) {
-      setIsOpen(false);
-      setIsLoading(false);
-      await onSuccess();
-    }
-    console.log(response);
-
-    // const { status } = await createAddressBook(formik.values).catch((err) => {
-    //   setErrorMessage(err);
-    //   setIsLoading(false);
-    // });
-    // setIsLoading(false);
-    // if(status === 400){
-    //   setErrorMessage("Please fill out the required fields");
-    // }
-    // if (status === 200) {
-    // navigate("/address-books", { replace: true });
-    // }
   };
 
   const validationSchema = object({
     fullName: string()
       .required("Name is required")
-      .min(3, "minimum length must be at least 3"),
+      .min(3, "Minimum length must be at least 3"),
     jobTitleId: string().required("Job Title is required"),
     departmentId: string().required("Department is required"),
     address: string().required("Address is required"),
@@ -98,23 +50,46 @@ const EditForm = ({ onEdit, id, onSuccess, data }) => {
     mobileNumber: string()
       .required("Mobile Number is required")
       .matches(/^(01)[0125][0-9]{8}$/i, "Invalid Mobile Number"),
+    dob: string().required("Date of Birth is required"),
   });
+
   const formik = useFormik({
     initialValues: {
       ...data,
     },
     validationSchema,
-    onSubmit: submit,
+    onSubmit: async (values) => {
+      setIsLoading(true);
+      setErrorMessage("");
+      try {
+        await updateAddressBook(id, values);
+        setIsOpen(false);
+        await onSuccess();
+      } catch (err) {
+        if (err.response?.status === 400) {
+          setErrorMessage(err.response.data);
+        } else {
+          setErrorMessage(
+            err.response?.status === 401
+              ? "You must log in before making changes."
+              : "Something went wrong. Please try again."
+          );
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
   });
+
   return (
     <div className="d-inline-block me-3">
-      <button onClick={() => setIsOpen(true)} className="btn btn-success mb-2">
+      <button onClick={() => setIsOpen(true)} className="btn btn-success">
         Edit
       </button>
 
       {isOpen && (
         <div
-          className="text-start position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex align-items-center justify-content-center"
+          className="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex align-items-center justify-content-center"
           style={{ zIndex: 1050 }}
         >
           <div className="bg-white col-4 rounded p-4 shadow-lg">
@@ -136,6 +111,7 @@ const EditForm = ({ onEdit, id, onSuccess, data }) => {
                   {formik.errors.fullName}
                 </div>
               )}
+
               <div className="row">
                 <div className="col-md-6">
                   <label htmlFor="jobTitleId">Job Title</label>
@@ -159,6 +135,7 @@ const EditForm = ({ onEdit, id, onSuccess, data }) => {
                     </div>
                   )}
                 </div>
+
                 <div className="col-md-6">
                   <label htmlFor="departmentId">Department</label>
                   <select
@@ -174,14 +151,17 @@ const EditForm = ({ onEdit, id, onSuccess, data }) => {
                         {option.name}
                       </option>
                     ))}
-                    {formik.errors.departmentId &&
-                      formik.touched.departmentId && (
-                        <div className="alert alert-danger">
-                          {formik.errors.departmentId}
-                        </div>
-                      )}
                   </select>
+                  {formik.errors.departmentId &&
+                    formik.touched.departmentId && (
+                      <div className="alert alert-danger">
+                        {formik.errors.departmentId}
+                      </div>
+                    )}
                 </div>
+              </div>
+
+              <div className="row">
                 <div className="col-md-6">
                   <label htmlFor="email" className="my-1">
                     Email:
@@ -201,9 +181,10 @@ const EditForm = ({ onEdit, id, onSuccess, data }) => {
                     </div>
                   )}
                 </div>
+
                 <div className="col-md-6">
                   <label htmlFor="mobileNumber" className="my-1">
-                    MobileNumber:
+                    Mobile Number:
                   </label>
                   <input
                     onBlur={formik.handleBlur}
@@ -221,17 +202,22 @@ const EditForm = ({ onEdit, id, onSuccess, data }) => {
                       </div>
                     )}
                 </div>
+              </div>
+
+              <div className="row">
                 <div className="col-md-6">
                   <label htmlFor="dob" className="my-1">
                     Date of Birth:
                   </label>
-                  <input
-                    onBlur={formik.handleBlur}
-                    value={formik.values.dob}
-                    onChange={formik.handleChange}
-                    type="date"
-                    name="dob"
-                    id="dob"
+                  <DatePicker
+                    selected={new Date(formik.values.dob)}
+                    onChange={(date) =>
+                      formik.setFieldValue(
+                        "dob",
+                        date.toISOString().split("T")[0]
+                      )
+                    }
+                    dateFormat="yyyy-MM-dd"
                     className="form-control mb-3"
                   />
                   {formik.errors.dob && formik.touched.dob && (
@@ -240,7 +226,8 @@ const EditForm = ({ onEdit, id, onSuccess, data }) => {
                     </div>
                   )}
                 </div>
-                <div className="col-md-12">
+
+                <div className="col-md-6">
                   <label htmlFor="address" className="my-1">
                     Address:
                   </label>
@@ -264,6 +251,7 @@ const EditForm = ({ onEdit, id, onSuccess, data }) => {
               {errorMessage && (
                 <div className="alert alert-danger">{errorMessage}</div>
               )}
+
               <div className="d-flex">
                 <button
                   type="button"
@@ -272,23 +260,21 @@ const EditForm = ({ onEdit, id, onSuccess, data }) => {
                 >
                   Cancel
                 </button>
-                {!isLoading ? (
-                  <button
-                    disabled={!(formik.isValid && formik.dirty)}
-                    type="submit"
-                    className="btn bg-main bg-primary text-white px-3 ms-auto d-block"
-                  >
-                    Save
-                  </button>
-                ) : (
-                  <button
-                    disabled
-                    type="button"
-                    className="btn bg-main text-white px-3 ms-auto d-block"
-                  >
-                    <i className="fas fa-spin fa-spinner"> </i>
-                  </button>
-                )}
+                <button
+                  type="submit"
+                  className={`btn px-3 ms-auto ${
+                    isLoading
+                      ? "bg-main text-white"
+                      : "bg-main bg-primary text-white"
+                  }`}
+                  disabled={isLoading || !(formik.isValid && formik.dirty)}
+                >
+                  {isLoading ? (
+                    <i className="fas fa-spin fa-spinner"></i>
+                  ) : (
+                    "Save"
+                  )}
+                </button>
               </div>
             </form>
           </div>

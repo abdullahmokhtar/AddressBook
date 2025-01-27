@@ -1,3 +1,4 @@
+using Backend.API.Helper;
 using Backend.API.Services;
 using Backend.BLL.Interfaces;
 using Backend.BLL.Repositories;
@@ -62,6 +63,8 @@ builder.Services.AddCors(opt =>
 });
 
 var app = builder.Build();
+
+await ApplySeeding.ApplySeedingAsync(app);
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

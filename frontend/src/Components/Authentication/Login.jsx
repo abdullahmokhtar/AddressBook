@@ -23,7 +23,7 @@ const Login = () => {
     if (status === 200) {
       setUserIsLoggedIn(true);
       Cookies.set("token", data?.token, { expires: 1 });
-      navigate("/home", { replace: true });
+      navigate("/address-books", { replace: true });
     }
   };
 

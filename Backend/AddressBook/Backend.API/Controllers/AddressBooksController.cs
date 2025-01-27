@@ -1,4 +1,5 @@
-﻿using Backend.API.Services;
+﻿using Backend.API.Models;
+using Backend.API.Services;
 using Backend.BLL.Interfaces;
 using Backend.BLL.Models;
 using Backend.DAL.Entities;
@@ -14,13 +15,15 @@ namespace Backend.API.Controllers
     {
         private readonly IAuthService _authService;
         private readonly IAddressBookRepository _addressBookRepository;
-        private readonly IWebHostEnvironment _environment;
+        private readonly string imagePath;
+
 
         public AddressBooksController(IAuthService authService, IAddressBookRepository addressBookRepository, IWebHostEnvironment environment)
         {
             _authService = authService;
             _addressBookRepository = addressBookRepository;
-            _environment = environment;
+            imagePath = $"{environment.WebRootPath}/images";
+
         }
 
         [AllowAnonymous]
@@ -67,11 +70,16 @@ namespace Backend.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(CreateAddressBookModel model)
+        public async Task<IActionResult> Create([FromForm] CreateAddressBook model)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
+            }
+
+            if (await _addressBookRepository.IsEmailExist(model.Email))
+            {
+                return BadRequest("Email is already exsited!");
             }
 
             var addressBook = new AddressBook
@@ -85,6 +93,11 @@ namespace Backend.API.Controllers
                 MobileNumber = model.MobileNumber ?? string.Empty,
                 Password = model.Password ?? string.Empty,
             };
+
+            if (model.Photo != null)
+            {
+                addressBook.Photo = await SaveCover(model.Photo);
+            }
 
             await _addressBookRepository.AddAsync(addressBook);
             if (await _addressBookRepository.SaveChangesAsync() > 0)
@@ -102,6 +115,10 @@ namespace Backend.API.Controllers
             var addressBook = await _addressBookRepository.GetByIdAsync(id);
             if (addressBook is null)
                 return NotFound($"There is no addressBook with this id {id}");
+            if (addressBook.Email != model.Email && await _addressBookRepository.IsEmailExist(model.Email))
+            {
+                return BadRequest("Email is already exsited!");
+            }
             addressBook.FullName = model.FullName;
             addressBook.JobTitleId = model.JobTitleId;
             addressBook.DepartmentId = model.DepartmentId;
@@ -130,6 +147,18 @@ namespace Backend.API.Controllers
                 return Ok(addressBook);
             }
             return BadRequest("Something went wrong please try again");
+        }
+
+        private async Task<string> SaveCover(IFormFile cover)
+        {
+            var coverName = $"{Guid.NewGuid()}{Path.GetExtension(cover.FileName)}";
+
+            var path = Path.Combine(imagePath, coverName);
+
+            using var stream = System.IO.File.Create(path);
+            await cover.CopyToAsync(stream);
+
+            return coverName;
         }
     }
 }

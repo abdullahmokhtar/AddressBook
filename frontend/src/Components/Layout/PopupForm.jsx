@@ -13,7 +13,6 @@ const PopupForm = ({ onEdit, id, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
     await onEdit(id, { ...formData, id });
     setIsOpen(false);
     await onSuccess();

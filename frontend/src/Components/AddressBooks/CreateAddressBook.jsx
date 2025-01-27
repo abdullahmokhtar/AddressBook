@@ -38,29 +38,36 @@ function CreateAddressBook() {
     setIsLoading(true);
     setErrorMessage("");
 
-    const response = await createAddressBook(formik.values).catch((err) => {
-      console.log(response);
-      console.log(err);
-      if (err.response.status === 401)
-        setErrorMessage("You must login before adding product to wishlist");
-      else setErrorMessage("Something went wrong");
-    });
-    if (response) {
-      navigate("/address-books", { replace: true });
-    }
-    console.log(response);
+    try {
+      const formData = new FormData();
+      formData.append("fullName", formik.values.fullName);
+      formData.append("jobTitleId", formik.values.jobTitleId);
+      formData.append("departmentId", formik.values.departmentId);
+      formData.append("mobileNumber", formik.values.mobileNumber);
+      formData.append("dob", formik.values.dob);
+      formData.append("address", formik.values.address);
+      formData.append("password", formik.values.password);
+      formData.append("email", formik.values.email);
 
-    // const { status } = await createAddressBook(formik.values).catch((err) => {
-    //   setErrorMessage(err);
-    //   setIsLoading(false);
-    // });
-    // setIsLoading(false);
-    // if(status === 400){
-    //   setErrorMessage("Please fill out the required fields");
-    // }
-    // if (status === 200) {
-    // navigate("/address-books", { replace: true });
-    // }
+      // Append the photo file (ensure it's not null or undefined)
+      if (formik.values.photo instanceof File) {
+        formData.append("photo", formik.values.photo);
+      }
+
+      const response = await createAddressBook(formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response) {
+        navigate("/address-books", { replace: true });
+      }
+    } catch (err) {
+      setErrorMessage("Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const validationSchema = object({
@@ -83,6 +90,7 @@ function CreateAddressBook() {
   const formik = useFormik({
     initialValues: {
       fullName: "",
+      email: "",
     },
     validationSchema,
     onSubmit: submit,
@@ -206,6 +214,24 @@ function CreateAddressBook() {
                 <div className="alert alert-danger">{formik.errors.dob}</div>
               )}
             </div>
+            <div className="col-md-6">
+              <label htmlFor="photo" className="my-1">
+                Photo:
+              </label>
+              <input
+                onBlur={formik.handleBlur}
+                onChange={(event) => {
+                  formik.setFieldValue("photo", event.currentTarget.files[0]);
+                }}
+                type="file"
+                name="photo"
+                id="photo"
+                className="form-control mb-3"
+              />
+              {formik.errors.photo && formik.touched.photo && (
+                <div className="alert alert-danger">{formik.errors.photo}</div>
+              )}
+            </div>
             <div className="col-md-12">
               <label htmlFor="address" className="my-1">
                 Address:
@@ -220,7 +246,9 @@ function CreateAddressBook() {
                 className="form-control mb-3"
               />
               {formik.errors.address && formik.touched.address && (
-                <div className="alert alert-danger">{formik.errors.address}</div>
+                <div className="alert alert-danger">
+                  {formik.errors.address}
+                </div>
               )}
             </div>
           </div>

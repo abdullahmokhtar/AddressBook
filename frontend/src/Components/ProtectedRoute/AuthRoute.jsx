@@ -6,7 +6,7 @@ import Cookies from "js-cookie";
 function AuthRoute({ children }) {
   const { userIsLoggedIn } = useContext(AuthContext);
   if (userIsLoggedIn && Cookies.get("token")) {
-    return <Navigate  to="/home"/>;
+    return <Navigate to="/address-books" />;
   } else {
     return children;
   }
