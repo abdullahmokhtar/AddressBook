@@ -1,0 +1,6 @@
+@AddressBook.PL_HostAddress = http://localhost:5098
+
+GET {{AddressBook.PL_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
