@@ -115,7 +115,7 @@ const AddressBook = () => {
                 <tr key={book.id}>
                   <td>
                     <img
-                      src={`https://localhost:7260/images/${book.photo}`}
+                      src={`http://addressbookmo5.runasp.net/images/${book.photo}`}
                       alt={book.fullName}
                       className="img-fluid rounded-circle"
                       style={{ width: "50px", height: "50px" }}

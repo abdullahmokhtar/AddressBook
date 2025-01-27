@@ -27,7 +27,7 @@ const Register = () => {
     name: string()
       .required("Name is required")
       .min(3, "minimum length must be at least 3")
-      .max(20, "maximum length must be at least 20"),
+      .max(100, "maximum length must be at least 100"),
     email: string()
       .required("Email is required")
       .matches(
