@@ -5,7 +5,7 @@ import Cookies from "js-cookie";
 
 axios.interceptors.request.use(function (config) {
   config.headers.Authorization = "Bearer " + Cookies.get("token");
-  config.baseURL = "http://addressbookmo5.runasp.net/api/";
+  config.baseURL = "https://addressbookmo5.runasp.net/api/";
   // config.baseURL = "https://localhost:7260/api/";
   return config;
 });
